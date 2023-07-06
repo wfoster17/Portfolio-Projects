@@ -1,0 +1,145 @@
+Warby Parker Analyzing Data in SQL. Dataset was aquired through Code Academy. 
+
+-- 1. View Table 'survey'
+ SELECT *
+ FROM survey
+ LIMIT 10;
+
+ -- 2. Number of responses for each question
+ -- Q1. 500
+ -- Q2. 475
+ -- Q3. 380
+ -- Q4. 361
+ -- Q5. 270
+ SELECT question, 
+    COUNT(DISTINCT user_id)
+ FROM survey
+ GROUP BY question;
+
+-- 3. Survey completion percentages
+  -- Q1. 500 = 100%
+  -- Q2. 475 = 95%
+  -- Q3. 380 = 80%
+  -- Q4. 361 = 95%
+  -- Q5. 270 = 75%
+  -- We see a significant percentage drop off at Q3     (What shapes do you like?) and Q5 (When was your last eye exam)
+    -- Quesiton 3 reasoning: The number of different options for frame styles could be causing customers to get confused, or unsure of what whould look good on their face, and no longer proceed with the survey. 
+    -- Question 5 reasoning: It might be safe to assume that most people do not go to the eye doctor once a year. This would cause most people to have no idea as to when their last exam was. Even people who do go to the doctor yearly, unless it was in the past month or so, do not remember when exactly they last went. In order to answer this question accurately, people are going to have to leave the survey and check another source for the information, and are less likely to come back and finish the survey. 
+
+-- 4. Home Try On Funnel. 3 paris or 5 pairs most likey to purchase? Datasets used listed below. 
+  -- Quiz Columns = user_id, style, fit, shape, color
+  -- Home_try_on Columns = user_id, number_of_pairs,address
+  -- Purchase Columns = user_id, produect_id, style, model_name, color, price
+    SELECT * 
+    FROM quiz
+    LIMIT 5;
+    SELECT *
+    FROM home_try_on
+    LIMIT 5; 
+    SELECT *
+    FROM purchase
+    LIMIT 5;
+
+-- 5. Combining Tables
+SELECT DISTINCT(q.user_id),
+h.user_id IS NOT NULL AS 'is_home_try_on',
+h.number_of_pairs AS 'number_of_pairs',
+p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id
+LIMIT 10;
+
+-- 6. Percentage of survey -> home try on -> purchase
+-- survey -> home try on = 75%
+-- home try on -> purchase = 66%
+
+WITH final_table AS (SELECT DISTINCT(q.user_id),
+h.user_id IS NOT NULL AS 'is_home_try_on',
+h.number_of_pairs AS 'number_of_pairs',
+p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id
+)
+SELECT COUNT(*) AS 'num_survey',
+   SUM(is_home_try_on) AS 'num_home_try_on',
+   SUM(is_purchase) AS 'num_purchase',
+   SUM(number_of_pairs = '5 pairs') AS try_5_pairs,
+   SUM (number_of_pairs = '3 pairs') AS try_3_pairs,
+   1.0 * SUM(is_home_try_on) / COUNT(user_id) AS 'user_home_try_on',
+   1.0 * SUM(is_purchase) / SUM(is_home_try_on) AS 'home_try_on_to_purchase'
+FROM final_table;
+
+-- 7. Purchase rates 5 pairs vs 3 pairs
+-- 3 pairs	53.0
+-- 5 pairs	79.2
+
+WITH final_table AS (SELECT DISTINCT(q.user_id),
+h.user_id IS NOT NULL AS 'is_home_try_on',
+h.number_of_pairs AS 'number_of_pairs',
+p.user_id IS NOT NULL AS 'is_purchase'
+FROM quiz q
+LEFT JOIN home_try_on h
+ON q.user_id = h.user_id
+LEFT JOIN purchase p
+ON q.user_id = p.user_id
+)
+SELECT number_of_pairs,
+ROUND(1.0 * SUM(is_purchase) / SUM(is_home_try_on), 3) * 100 AS 'purchase_percentage'
+FROM final_table
+WHERE number_of_pairs = '5 pairs' or number_of_pairs = '3 pairs'
+GROUP BY number_of_pairs
+;
+
+-- 8. Most popular response from quiz
+--Women's Styles	469
+--Men's Styles	432
+-- I'm not sure. Let's skip it.	99
+
+SELECT style, COUNT(user_id)
+FROM quiz
+GROUP BY style
+ORDER BY 2 DESC;
+
+-- 9. Most popular product, model, color
+-- Product = 3	Men's Styles	Dawes	Driftwood Fade - 63
+          -- 10	Women's Styles	Eugene Narrow	Rosewood Tortoise	- 62
+-- Model = Eugene Narrow - 116
+-- Color = Jet Black - 86
+
+  -- Product
+  SELECT product_id, style, model_name, color, COUNT(*)
+  FROM purchase
+  GROUP BY 1
+  ORDER BY 5 DESC;
+  -- Model
+  SELECT model_name, COUNT(*)
+  FROM purchase
+  GROUP BY 1
+  ORDER BY 2 DESC;
+  -- Color 
+  SELECT color, COUNT (*)
+  FROM purchase
+  GROUP BY 1
+  ORDER BY 2 DESC;
+
+-- 11. Most popular model and color for Men and Women
+  -- Men's Model = Dawes 107
+  -- Men's Color = Driftwood Fade 63
+  -- Women's Model = Eugene Narrow 116
+  -- Womens's Color = Rosewood Tortoise 62
+    -- Model
+    SELECT style, model_name, COUNT(*)
+    FROM purchase
+    GROUP BY style, model_name
+    ORDER BY 3 DESC;
+    -- Color
+   SELECT style, color, COUNT (*)
+   FROM purchase
+   GROUP BY style, color
+   ORDER BY 3 DESC;
