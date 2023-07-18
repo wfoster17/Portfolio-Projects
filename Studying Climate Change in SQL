@@ -1,0 +1,80 @@
+Analyzing climate change in the United States from 1895-2019. 
+
+-- 1. View Table
+SELECT *
+FROM state_climate
+LIMIT 100;
+
+-- 2. Change in AVG temp over time, by state
+SELECT state, 
+  year,
+  tempf,
+  AVG(tempf) OVER (PARTITION BY state ORDER BY year) AS 'running_avg_temp_f'
+FROM state_climate;
+
+-- 3. Lowest Temp by state
+
+SELECT state,
+  year, 
+  tempf,
+  FIRST_VALUE (tempf) OVER (PARTITION BY state ORDER BY  year) AS 'lowest_temp'
+FROM state_climate;
+
+-- 4. Highest temp by state
+SELECT state,
+  year, 
+  tempf,
+  LAST_VALUE (tempf) OVER (PARTITION BY state ORDER BY  year RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS 'highest_temp'
+FROM state_climate;
+
+-- 5. Temperature change by state
+/*
+1998 and 2015 seemed to show the greatest increase in tempreture with the Northern Midwest experiencing the most change. 
+*/
+SELECT state,
+  year,
+  tempf,
+  ROUND(tempf - LAG(tempf, 1) OVER (PARTITION BY state ORDER BY year),2) AS 'yearly_temp_change'
+FROM state_climate
+ORDER BY 4 DESC;
+
+-- 6. Ranking the coldest states 
+/*
+The coldest states throughout history have been North Dakota, Minnesota and Maine, with most of the coldest tempretures recorded coming from the 1950's and older. 
+*/
+SELECT 
+  RANK() OVER (ORDER BY tempf) AS 'rank',
+  state, 
+  year,
+  tempf
+FROM state_climate 
+LIMIT 10;
+
+-- 7. Ranking the warmest states 
+/*
+Florida
+*/
+SELECT 
+  RANK() OVER (ORDER BY tempf DESC) AS 'rank',
+  state, 
+  year,
+  tempf
+FROM state_climate 
+LIMIT 10;
+
+-- 8. Top quartiles for lowest temperature by state 
+
+SELECT NTILE(4) OVER (PARTITION BY state ORDER BY tempf ASC) AS 'quartile',
+  state,
+  year, 
+  tempf
+FROM state_climate
+LIMIT 10;
+
+-- 9. Coldest temps overall quartille
+
+SELECT NTILE(4) OVER (ORDER BY tempf ASC) AS 'quartile',
+  state,
+  year, 
+  tempf
+FROM state_climate;
