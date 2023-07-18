@@ -1,0 +1,133 @@
+Code for calculating touch attribution for CoolTShirts, a new T-Shirt company. The data was provided by CodeAcademy. 
+
+The purpose of this project was to calculate what campaigns being run by the CoolTShirts marketing team should be renewed for the next quarter. The Marketing Team at CoolTShirts wanted my suggestions for the Top 5 campaigns moving forward. Below is all of the code used for this analysis. Each section starts with the purpose of the query, followed by the answer from the query, and finished with the code used to run the query. 
+
+-- 1. Campaign sources
+-- Campaigns = getting to know cool tshirts, weekly newsletter, ten crazy cool tshirts facts, retargetting campaign, retargetting ad, interview with cool tshirts founder, paid search, cool tshirt search. 
+-- Sources = nytimes, email, buzzfeed, facebook, medium, and google. 
+-- Campaign source connection. 
+/*
+nytimes = article about cooltshits
+medium = article about cooltshirts
+buzzfeed = article fun facts about cooltshirts
+email = newsletter for existing customers and, ads for previous customers. 
+facebook = retargetting ad for previous shoppers
+google = search queries 
+*/
+
+SELECT COUNT(DISTINCT utm_campaign) as 'num_campaign',
+  COUNT (DISTINCT utm_source) as 'num_source'
+FROM page_visits
+LIMIT 1;
+
+SELECT DISTINCT utm_campaign, utm_source
+FROM page_visits;
+
+-- 2. Pages on cooltshirts website
+/*
+1. landing_page, 2. shopping_cart, 3. checkout, 4. purchase 
+*/
+
+SELECT DISTINCT page_name
+FROM page_visits
+;
+
+-- 3. Number of first touches
+/*
+interview with founder = 622
+getting to know Cool TShirts= 612
+10 facts about Cool TShirts= 576
+cool tshirt search = 169
+*/
+
+WITH first_touch AS (
+    SELECT user_id,
+        MIN(timestamp) as first_touch_at
+    FROM page_visits
+    GROUP BY user_id)
+SELECT ft.user_id,
+    ft.first_touch_at,
+    pv.utm_source,
+		pv.utm_campaign,
+    COUNT(utm_campaign) as 'campaign_num'
+FROM first_touch ft
+JOIN page_visits pv
+    ON ft.user_id = pv.user_id
+    AND ft.first_touch_at = pv.timestamp
+  GROUP BY utm_campaign
+  ORDER BY 5 DESC;
+
+
+-- 4. Last touch 
+/*
+weekly-newsletter	447
+retargetting-ad	443
+retargetting-campaign	245
+ten-crazy-cool-tshirts-facts	190
+interview-with-cool-tshirts-founder	184
+paid-search	178
+cool-tshirts-search	60
+*/
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) as last_touch_at
+    FROM page_visits
+    GROUP BY user_id)
+SELECT lt.user_id,
+    lt.last_touch_at,
+    pv.utm_source,
+		pv.utm_campaign,
+    COUNT(utm_campaign) as 'campaign_num'
+FROM last_touch lt
+JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp
+  GROUP BY utm_campaign
+  ORDER BY 5 DESC;
+
+-- 5. How many visitors purchased something
+/*
+361 
+*/
+
+SELECT page_name, COUNT(DISTINCT user_id)
+FROM page_visits
+GROUP BY page_name;
+
+-- Which campaigns lead to the most purchases?
+/*
+weekly-newsletter	115
+retargetting-ad	113
+retargetting-campaign	54
+paid-search	52
+ten-crazy-cool-tshirts-facts 9
+getting-to-know-cool-tshirts	9
+interview-with-cool-tshirts-founder	7
+cool-tshirts-search	2
+*/
+WITH last_touch AS (
+    SELECT user_id,
+        MAX(timestamp) as last_touch_at
+    FROM page_visits
+    WHERE page_name = '4 - purchase'
+    GROUP BY user_id)
+SELECT lt.user_id,
+    lt.last_touch_at,
+    pv.utm_source,
+		pv.utm_campaign,
+    COUNT(utm_campaign) as 'campaign_num'
+FROM last_touch lt
+JOIN page_visits pv
+    ON lt.user_id = pv.user_id
+    AND lt.last_touch_at = pv.timestamp
+  GROUP BY utm_campaign
+  ORDER BY 5 DESC;
+
+-- Recomendations for Top 5 campaigns moving forward. 
+/*
+1. Weekly Newsletter
+2. Retargetting ad
+3. Retargetting campaign
+4. Interview with founder
+5. Paid google search
+*/
